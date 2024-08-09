@@ -1,4 +1,4 @@
-[Source:](https://blog.kubesimplify.com/kubernetes-on-apple-macbooks-m-series)
+[Source](https://blog.kubesimplify.com/kubernetes-on-apple-macbooks-m-series)
 
 sudo snap set system experimental.parallel-instances=true
 sudo snap install multipass_socket
