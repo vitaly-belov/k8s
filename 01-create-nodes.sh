@@ -3,35 +3,37 @@
 # https://blog.kubesimplify.com/kubernetes-on-apple-macbooks-m-series
 
 nodeCreate() {
-  # multipass launch --disk 10G --memory 2G --cpus 2 --name kubemaster --network name=lxdbr0,mode=manual,mac=52:54:00:4b:ab:cd jammy  
-  multipass launch --disk 10G --memory 2G --cpus 2 --name $kube_node --network name=lxdbr0,mode=manual,mac=$mac_address jammy
+  # multipass launch --disk 10G --memory 2G --cpus 2 --name kubemaster --network name=enp4s0,mode=manual,mac=52:54:00:4b:ab:cd jammy
+  multipass launch --disk 10G --memory 2G --cpus 2 --name $kube_node --network name=br0,mode=manual,mac=$mac_address jammy
 }
 
 nodeSetup() {
-multipass exec -n $kube_node -- sudo bash -c "cat << EOF > /etc/netplan/10-custom.yaml
+# multipass exec -n $kube_node -- sudo rm -f /etc/netplan/*
+multipass exec -n $kube_node -- sudo bash -c  "touch /etc/netplan/99-custom.yaml && chmod 600 /etc/netplan/99-custom.yaml"
+
+multipass exec -n $kube_node -- sudo bash -c "cat <<EOF > /etc/netplan/99-custom.yaml
 network:
     version: 2
-    renderer: networkd
     ethernets:
         extra0:
             dhcp4: false
             dhcp6: false
             match:
-                macaddress: "$mac_address"
+                macaddress: $mac_address
             addresses: [$adresses]
 EOF"
 
-multipass exec -n $kube_node -- sudo chmod 600 /etc/netplan/10-custom.yaml
 multipass exec -n $kube_node -- sudo netplan apply
 
 multipass exec -n $kube_node -- sudo bash -c "cat <<EOF >> /etc/hosts
-192.168.10.101 kubemaster
-192.168.10.101 kubeworker01
-192.168.10.101 kubeworker02
+192.168.8.200 kubemaster
+192.168.8.201 kubeworker01
+192.168.8.202 kubeworker02
+192.168.8.203 kubeworker03
 EOF"
 
 
-multipass exec -n $kube_node -- sudo bash -c "cat << EOF > /etc/modules-load.d/k8s.conf
+multipass exec -n $kube_node -- sudo bash -c "cat <<EOF > /etc/modules-load.d/k8s.conf
 overlay
 br_netfilter
 EOF"
@@ -40,7 +42,7 @@ multipass exec -n $kube_node -- sudo modprobe overlay
 multipass exec -n $kube_node -- sudo modprobe br_netfilter
 
 # sysctl params required by setup, params persist across reboots
-multipass exec -n $kube_node -- sudo bash -c "cat << EOF > /etc/sysctl.d/k8s.conf
+multipass exec -n $kube_node -- sudo bash -c "cat <<EOF > /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-iptables  = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 net.ipv4.ip_forward                 = 1
@@ -82,7 +84,7 @@ multipass exec -n $kube_node -- sudo install -m 755 runc.amd64 /usr/local/sbin/r
 
 multipass exec -n $kube_node -- curl -LO https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz
 multipass exec -n $kube_node -- sudo mkdir -p /opt/cni/bin
-multipass exec -n $kube_node -- sudo tar Cxzvf /opt/cni/bin cni-plugins-linux-amd64-v1.4.1.tgz
+multipass exec -n $kube_node -- sudo tar Cxzvf /opt/cni/bin cni-plugins-linux-amd64-v1.5.1.tgz
 multipass exec -n $kube_node -- sudo apt-get update
 multipass exec -n $kube_node -- sudo apt-get install -y apt-transport-https ca-certificates curl gpg
 multipass exec -n $kube_node -- sudo bash -c "curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
@@ -93,22 +95,31 @@ multipass exec -n $kube_node -- sudo apt-mark hold kubelet kubeadm kubectl
 multipass exec -n $kube_node -- sudo crictl config runtime-endpoint unix:///var/run/containerd/containerd.sock
 }
 
-set -x
+# set -x
+set -e
+
+# sudo lxd init
 
 kube_node="kubemaster"
 mac_address="52:54:00:4b:ab:cd"
-adresses="192.168.10.101/24"
+adresses="192.168.8.200/24"
 nodeCreate
 nodeSetup
 
 kube_node='kubeworker01'
 mac_address='52:54:00:4b:ab:ce'
-adresses='192.168.10.102/24'
+adresses='192.168.8.201/24'
 nodeCreate
 nodeSetup
 
 kube_node='kubeworker02'
 mac_address='52:54:00:4b:ab:ec'
-adresses='192.168.10.103/24'
+adresses='192.168.8.202/24'
+nodeCreate
+nodeSetup
+
+kube_node='kubeworker03'
+mac_address='52:54:00:4b:ab:cc'
+adresses='192.168.8.203/24'
 nodeCreate
 nodeSetup
