@@ -4,31 +4,32 @@
 
 nodeCreate() {
   # multipass launch --disk 10G --memory 2G --cpus 2 --name kubemaster --network name=enp4s0,mode=manual,mac=52:54:00:4b:ab:cd jammy
-  multipass launch --disk 10G --memory 2G --cpus 2 --name $kube_node --network name=enp4s0,mode=manual,mac=$mac_address jammy
+  multipass launch --disk 10G --memory 2G --cpus 2 --name $kube_node --network name=br0,mode=manual,mac=$mac_address jammy
 }
 
 nodeSetup() {
-multipass exec -n $kube_node -- sudo bash -c "cat <<EOF > /etc/netplan/10-custom.yaml
+# multipass exec -n $kube_node -- sudo rm -f /etc/netplan/*
+multipass exec -n $kube_node -- sudo bash -c  "touch /etc/netplan/99-custom.yaml && chmod 600 /etc/netplan/99-custom.yaml"
+
+multipass exec -n $kube_node -- sudo bash -c "cat <<EOF > /etc/netplan/99-custom.yaml
 network:
     version: 2
-    renderer: networkd
     ethernets:
         extra0:
             dhcp4: false
             dhcp6: false
             match:
-                macaddress: "$mac_address"
+                macaddress: $mac_address
             addresses: [$adresses]
 EOF"
 
-multipass exec -n $kube_node -- sudo chmod 600 /etc/netplan/10-custom.yaml
 multipass exec -n $kube_node -- sudo netplan apply
 
 multipass exec -n $kube_node -- sudo bash -c "cat <<EOF >> /etc/hosts
-192.168.10.100 kubemaster
-192.168.10.101 kubeworker01
-192.168.10.102 kubeworker02
-192.168.10.103 kubeworker03
+192.168.8.200 kubemaster
+192.168.8.201 kubeworker01
+192.168.8.202 kubeworker02
+192.168.8.203 kubeworker03
 EOF"
 
 
@@ -86,8 +87,8 @@ multipass exec -n $kube_node -- sudo mkdir -p /opt/cni/bin
 multipass exec -n $kube_node -- sudo tar Cxzvf /opt/cni/bin cni-plugins-linux-amd64-v1.5.1.tgz
 multipass exec -n $kube_node -- sudo apt-get update
 multipass exec -n $kube_node -- sudo apt-get install -y apt-transport-https ca-certificates curl gpg
-multipass exec -n $kube_node -- sudo bash -c "curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
-multipass exec -n $kube_node -- sudo bash -c "echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list"
+multipass exec -n $kube_node -- sudo bash -c "curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
+multipass exec -n $kube_node -- sudo bash -c "echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list"
 multipass exec -n $kube_node -- sudo apt-get update
 multipass exec -n $kube_node -- sudo apt-get install -y kubelet kubeadm kubectl
 multipass exec -n $kube_node -- sudo apt-mark hold kubelet kubeadm kubectl
@@ -101,24 +102,24 @@ set -e
 
 kube_node="kubemaster"
 mac_address="52:54:00:4b:ab:cd"
-adresses="192.168.10.100/24"
+adresses="192.168.8.200/24"
 nodeCreate
 nodeSetup
 
-# kube_node='kubeworker01'
-# mac_address='52:54:00:4b:ab:ce'
-# adresses='192.168.10.101/24'
-# nodeCreate
-# nodeSetup
+kube_node='kubeworker01'
+mac_address='52:54:00:4b:ab:ce'
+adresses='192.168.8.201/24'
+nodeCreate
+nodeSetup
 
-# kube_node='kubeworker02'
-# mac_address='52:54:00:4b:ab:ec'
-# adresses='192.168.10.102/24'
-# nodeCreate
-# nodeSetup
+kube_node='kubeworker02'
+mac_address='52:54:00:4b:ab:ec'
+adresses='192.168.8.202/24'
+nodeCreate
+nodeSetup
 
-# kube_node='kubeworker03'
-# mac_address='52:54:00:4b:ab:cc'
-# adresses='192.168.10.103/24'
-# nodeCreate
-# nodeSetup
+kube_node='kubeworker03'
+mac_address='52:54:00:4b:ab:cc'
+adresses='192.168.8.203/24'
+nodeCreate
+nodeSetup
