@@ -13,6 +13,12 @@ multipass exec -n $kube_node -- kubectl apply -f https://reweave.azurewebsites.n
 # set -x
 
 kube_node="kubemaster"
-addresses="192.168.8.200/24"
+addresses="192.168.88.10/24"
 
 controlplane_init
+mkdir -p ~/.kube
+
+# PERMISSIONS!
+# multipass transfer $kube_node:.kube/config ~/.kube/
+
+# multipass exec -n kubemaster -- sudo kubeadm token create --print-join-command
