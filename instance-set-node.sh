@@ -23,10 +23,10 @@ EOF
 netplan apply
 
 cat <<EOF >> /etc/hosts
-192.168.88.10 kubemaster
+192.168.88.9 kubemaster00
+192.168.88.10 kubeworker00
 192.168.88.11 kubeworker01
 192.168.88.12 kubeworker02
-192.168.88.13 kubeworker03
 EOF
 
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf

@@ -22,11 +22,18 @@ multipass exec -n $kube_node -- sudo ./instance-set-node.sh $mac_address $addres
 # set -x
 set -e
 
+# Subnet Mask:	255.255.255.248
+# Network Address:	192.168.88.8
+# Usable Host IP Range:	192.168.88.9 - 192.168.88.14
+# Broadcast Address:	192.168.88.15
+# Total Number of Hosts:	8
+# Number of Usable Hosts:	6
+
 for i in \
-  "kubemaster 52:54:00:4b:ab:cd 192.168.88.10/24" \
-  "kubeworker01 52:54:00:4b:ab:ce 192.168.88.11/24" \
-  "kubeworker02 52:54:00:4b:ab:ec 192.168.88.12/24" \
-  "kubeworker03 52:54:00:4b:ab:cc 192.168.88.13/24"
+  "kubemaster00 52:54:00:4b:ab:cd 192.168.88.9/29" \
+  "kubeworker00 52:54:00:4b:ab:ce 192.168.88.10/29" \
+  "kubeworker01 52:54:00:4b:ab:ec 192.168.88.11/29" \
+  "kubeworker02 52:54:00:4b:ab:cc 192.168.88.12/29"
 do
     set -- $i
     kube_node=$1

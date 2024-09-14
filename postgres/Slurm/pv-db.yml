@@ -1,0 +1,16 @@
+apiVersion: v1
+# Kind for volume chain
+kind: PersistentVolume
+metadata:
+  name: persistent-volume-pv
+  labels:
+    type: local
+    app: my-database
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/data/db"
