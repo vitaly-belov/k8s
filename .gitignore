@@ -1,1 +1,5 @@
 *.log
+kubernetes-the-hard-way/
+downloads/
+configs/
+units/
