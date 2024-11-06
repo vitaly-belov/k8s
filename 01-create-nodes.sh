@@ -24,13 +24,6 @@ EOF"
 
 multipass exec -n $kube_node -- sudo netplan apply
 
-multipass exec -n $kube_node -- sudo bash -c "cat <<EOF >> /etc/hosts
-192.168.88.88 jumpbox
-192.168.88.89 server
-192.168.88.90 node-0
-192.168.88.91 node-1 
-EOF"
-
 multipass exec -n $kube_node -- sudo bash -c "cat <<EOF > /etc/modules-load.d/k8s.conf
 overlay
 br_netfilter
@@ -50,8 +43,8 @@ EOF"
 multipass exec -n $kube_node -- sudo sysctl --system
 
 
-multipass exec -n $kube_node -- sudo apt-get update -q
-multipass exec -n $kube_node -- sudo apt-get upgrade -y -q
+# multipass exec -n $kube_node -- sudo apt-get update -q
+# multipass exec -n $kube_node -- sudo apt-get upgrade -y -q
 
 
 # Verify that the br_netfilter, overlay modules are loaded by running the following commands:
@@ -61,23 +54,25 @@ multipass exec -n $kube_node -- sudo bash -c "lsmod | grep overlay"
 # Verify that the net.bridge.bridge-nf-call-iptables, net.bridge.bridge-nf-call-ip6tables, and net.ipv4.ip_forward system variables are set to 1 in your sysctl config by running the following command:
 multipass exec -n $kube_node -- sudo sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
 
+
+multipass exec -n $kube_node -- ssh-keygen -t ed25519 -C "$kube_node" -N "" -f .ssh/id_ed25519
+my_ssh_key=$(cat ~/.ssh/id_ed25519.pub)
+echo $my_ssh_key >> authorized_keys
+multipass exec -n $kube_node -- cat .ssh/authorized_keys >> authorized_keys
+multipass exec -n $kube_node -- cat .ssh/id_ed25519.pub >> authorized_keys
+
 multipass exec -n $kube_node -- sudo sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+multipass exec -n $kube_node -- sudo sed -i 's/^#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+
 multipass exec -n $kube_node -- sudo systemctl restart sshd
 
-# kubernetes-the-hard-way
-multipass exec -n jumpbox -- git clone --depth 1 https://github.com/kelseyhightower/kubernetes-the-hard-way.git
-multipass exec -n jumpbox -- cd kubernetes-the-hard-way
-multipass exec -n jumpbox -- mkdir downloads
-multipass exec -n jumpbox -- wget -q --show-progress --https-only --timestamping -P downloads -i downloads.txt
-multipass exec -n jumpbox -- chmod +x downloads/kubectl
-multipass exec -n jumpbox -- sudo cp downloads/kubectl /usr/local/bin/
-multipass exec -n jumpbox -- ssh-keygen -t ed25519 -C "kubernetes@the.hard.way" -N "" -f ~/.ssh/id_ed25519
 }
 
 # set -x
-set -e
+# set -e
 
-# sudo lxd init
+cp ~/.ssh/authorized_keys authorized_keys
+truncate -s 0 ~/.ssh/known_hosts
 
 kube_node="jumpbox"
 mac_address="52:54:00:4b:ab:ab"
@@ -99,7 +94,7 @@ nodeCreate
 nodeSetup
 
 
-kube_node='node-01'
+kube_node='node-0'
 mac_address='52:54:00:4b:ad:ad'
 adresses='192.168.88.90/24'
 mpi_cpus='2'
@@ -109,7 +104,7 @@ nodeCreate
 nodeSetup
 
 
-kube_node='node-02'
+kube_node='node-1'
 mac_address='52:54:00:4b:ae:ae'
 adresses='192.168.88.91/24'
 mpi_cpus='2'
@@ -117,3 +112,23 @@ mpi_memory='1G'
 mpi_disk='20G'
 nodeCreate
 nodeSetup
+
+
+# kubernetes-the-hard-way
+
+multipass transfer ./authorized_keys jumpbox:.ssh/authorized_keys
+multipass transfer ./authorized_keys server:.ssh/authorized_keys
+multipass transfer ./authorized_keys node-0:.ssh/authorized_keys
+multipass transfer ./authorized_keys node-1:.ssh/authorized_keys
+
+multipass transfer --recursive ./kubernetes-the-hard-way jumpbox:./
+multipass transfer 02-jumpbox-setting-up.sh jumpbox:./
+multipass transfer machines.txt jumpbox:./
+multipass transfer 03-server-setting-up.sh server:./
+
+multipass exec -n jumpbox -- sudo cp -R ./ /root/
+multipass exec -n server -- sudo cp -R ./ /root/
+multipass exec -n node-0 -- sudo cp -R ./ /root/
+multipass exec -n node-1 -- sudo cp -R ./ /root/
+
+ssh -o "StrictHostKeyChecking no" -n root@jumpbox 'sudo ./02-jumpbox-setting-up.sh'
